@@ -1,0 +1,62 @@
+language: rust
+
+cache: cargo
+
+rust:
+  - 1.26.0
+  - 1.27.2
+  - 1.28.0
+
+os:
+  - linux
+  - osx
+
+matrix:
+  fast_finish: true
+
+notifications:
+  email: false
+
+# We can't test OpenGL 3.2 on Travis, the shader compilation fails
+# because glium does a check first if it has a OGL 3.2 context
+script:
+  - cargo clean
+  - cargo build --verbose --examples
+
+# before_install:
+#   - sudo apt-get update
+
+install:
+  - PATH=$PATH:/home/travis/.cargo/bin
+
+addons:
+  apt:
+    update: true
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - cmake
+      - gcc
+      - binutils-dev
+      - libiberty-dev
+      - zlib1g-dev
+
+after_success: |
+  wget https://github.com/SimonKagstrom/kcov/archive/v34.tar.gz &&
+  tar xzf v34.tar.gz &&
+  cd kcov-34 &&
+  mkdir build &&
+  cd build &&
+  cmake .. &&
+  make &&
+  sudo make install &&
+  cd ../.. &&
+  rm -rf kcov-34 &&
+  find target/debug -maxdepth 1 -name 'street_index-*' -type f | while read file; do
+    [ -x $file ] || continue;
+    mkdir -p "target/cov/$(basename $file)";
+    kcov --exclude-pattern=/.cargo,/usr/lib  --include-path="$(pwd)" --verify "target/cov/$(basename $file)" "$file";
+  done &&
+  bash <(curl -s https://codecov.io/bash) &&
+  echo "Uploaded code coverage"

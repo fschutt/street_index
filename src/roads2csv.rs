@@ -2,7 +2,7 @@
 
 use std::{fmt, collections::{BTreeMap, BTreeSet}};
 
-/// Name of one street ()
+/// Name of one street (such as `"Canterbury Road"`)
 #[derive(Debug, Clone, PartialEq, Ord, PartialOrd, Eq, Hash)]
 pub struct StreetName(pub String);
 
@@ -12,6 +12,8 @@ impl fmt::Display for StreetName {
     }
 }
 
+/// Input street to the deduplicator - the street must have a 
+/// name and a position (such as `"A9"`)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InputStreetValue {
     pub street_name: StreetName,
@@ -31,6 +33,7 @@ impl fmt::Display for GridPosition {
     }
 }
 
+/// Deduplicates road names, merging the roads by their name
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DeduplicatedRoads {
     pub roads: BTreeMap<StreetName, BTreeSet<GridPosition>>,
@@ -53,7 +56,7 @@ impl DeduplicatedRoads {
     /// Mayer Street -> [A4, A5, A6]
     /// ```
     ///
-    /// The output road name positions are ordered
+    /// The output road name positions are ordered.
     pub fn from_streets(streets: &[InputStreetValue]) -> Self {
         let mut deduplicated_names = BTreeMap::new();
 
@@ -67,19 +70,37 @@ impl DeduplicatedRoads {
         Self { roads: deduplicated_names }
     }
 
-    /// Processing road names in a cartographic manner is
-    pub fn process(self) -> (ProcessedRoadNames, UnprocessedRoadNames) {
+    /// Processes road names (`[A1, A2]` => `A1-A2`) if they span less than 2 grids.
+    /// 
+    /// Processing road names in a cartographic manner is tricky. For example, a 
+    /// street that appears in two locations on the map (such as a city having 
+    /// the same street name as a neighbouring city). Because of this, street name
+    /// processing can't be fully automated, since there are always weird edge cases 
+    /// to worry about. However, 90% of roads aren't like that.
+    /// 
+    /// Because of this limitation `process()` gives you two types of roads back: 
+    /// - `ProcessedRoadName` is for roads that span only 1 or 2 grid cells 
+    /// (i.e. `"Canterbury Road" => A9`, `"Canterbury Road" => A9-A10`).
+    /// In these cases (which cover 90% of street index names), the mapping is not
+    /// ambigouus.
+    /// 
+    /// `UnprocessedRoadName` is for anything else (e.g. `"Canterbury Road" => [A9, A10, E1, E2]`. 
+    /// Usually these roads need to be manually reviewed - it could likely be that 
+    /// there are two roads `"Canterbury Road" => A9-10;E1-E2`, but it could also
+    /// be that the road is just one road and part of it is just clipped off the map,
+    /// in which case you'd write `"Canterbury Road" => A9-E2`. 
+    pub fn process(&self) -> (ProcessedRoadNames, UnprocessedRoadNames) {
 
         let mut processed = BTreeMap::new();
         let mut unprocessed = BTreeMap::new();
 
-        for (road_name, positions) in self.roads {
-            let positions_vec = positions.into_iter().collect::<Vec<GridPosition>>();
+        for (road_name, positions) in &self.roads {
+            let positions_vec = positions.into_iter().cloned().collect::<Vec<GridPosition>>();
             match positions_vec.len() {
                 0 => { },
-                1 => { processed.insert(road_name, FinalizedGridPositon::SingleRect(positions_vec[0].clone())); }
-                2 => { processed.insert(road_name, FinalizedGridPositon::TwoRect(positions_vec[0].clone(), positions_vec[1].clone())); }
-                _ => { unprocessed.insert(road_name, positions_vec); }
+                1 => { processed.insert(road_name.clone(), FinalizedGridPositon::SingleRect(positions_vec[0].clone())); }
+                2 => { processed.insert(road_name.clone(), FinalizedGridPositon::TwoRect(positions_vec[0].clone(), positions_vec[1].clone())); }
+                _ => { unprocessed.insert(road_name.clone(), positions_vec); }
             }
         }
 
@@ -139,6 +160,7 @@ fn test_format_street() {
     assert_eq!(format!("{}", road_pos_1), String::from("A9-I5"));
 }
 
+/// Wrapper for grid positions that span less than 2 grid cells
 pub enum FinalizedGridPositon {
     /// Road is contained within a single rect, i.e. "Valley Road -> A6"
     SingleRect(GridPosition),
@@ -158,6 +180,7 @@ impl fmt::Display for FinalizedGridPositon {
     }
 }
 
+/// Road name that spans less than 2 grid cells
 pub struct ProcessedRoad {
     pub name: StreetName,
     pub position: FinalizedGridPositon,
@@ -169,6 +192,7 @@ impl fmt::Display for ProcessedRoad {
     }
 }
 
+/// Road name that spans more than 2 grid cells
 pub struct UnprocessedRoad {
     pub name: StreetName,
     pub positions: Vec<GridPosition>,
@@ -181,22 +205,36 @@ impl fmt::Display for UnprocessedRoad {
     }
 }
 
+/// Simple wrapper for `Vec<ProcessedRoad>` with `.to_csv()` exporting function
 pub struct ProcessedRoadNames {
     pub processed: Vec<ProcessedRoad>,
 }
 
 impl ProcessedRoadNames {
-    pub fn to_csv(self) -> String {
-        self.processed.into_iter().map(|processed_road| format!("{}", processed_road)).collect::<Vec<String>>().join("\r\n")
+    pub fn to_csv(&self, delimiter: &str) -> String {
+        self.processed.iter().map(|processed_road| 
+            format!("{}{}{}", processed_road.name, delimiter, processed_road.position))
+        .collect::<Vec<String>>()
+        .join("\r\n")
     }
 }
 
+/// Simple wrapper for `Vec<UnprocessedRoad>` with `.to_csv()` exporting function
 pub struct UnprocessedRoadNames {
     pub unprocessed: Vec<UnprocessedRoad>,
 }
 
 impl UnprocessedRoadNames {
-    pub fn to_csv(self) -> String {
-        self.unprocessed.into_iter().map(|processed_road| format!("{}", processed_road)).collect::<Vec<String>>().join("\r\n")
+    pub fn to_csv(&self, delimiter: &str) -> String {
+        self.unprocessed.iter().map(|unprocessed_road| {
+            let unprocessed_string = unprocessed_road.positions
+                .iter()
+                .map(|pos| format!("{}", pos))
+                .collect::<Vec<String>>()
+                .join(delimiter);
+            format!("{}{}{}", unprocessed_road.name, delimiter, unprocessed_string)
+        })
+        .collect::<Vec<String>>()
+        .join("\r\n")
     }
 }

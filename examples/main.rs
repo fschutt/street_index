@@ -13,7 +13,7 @@ fn main() {
                 cell_height: Millimeter(20.0),
             });
 
-    grid.insert_font(StreetNameRect {
+    grid.insert_street(StreetNameRect {
         street_name: String::from("Canterbury Road"),
         x_from_left: Millimeter(30.0),
         width: Millimeter(50.0),
@@ -21,9 +21,9 @@ fn main() {
         height: Millimeter(8.0),
     });
 
-    let deduplicated = DeduplicatedRoads::from_streets(&grid.into_street_names());
+    let deduplicated = DeduplicatedRoads::from_streets(&grid.street_names());
     let (processed, unprocessed) = deduplicated.process();
 
-    println!("processed:\r\n{}", processed.to_csv());
-    println!("unprocessed:\r\n{}", unprocessed.to_csv());
+    println!("processed:\r\n{}", processed.to_csv("\t"));
+    println!("unprocessed:\r\n{}", unprocessed.to_csv("\t"));
 }

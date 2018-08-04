@@ -2,5 +2,16 @@
 name = "street_index"
 version = "0.1.0"
 authors = ["Felix Schütt <felix.schuett@maps4print.com>"]
+description = '''
+    street_index is a small utility crate for working with road name / 
+    street indexing for cartographic purposes
+'''
+documentation = "https://docs.rs/street_index"
+homepage = "https://github.com/fschutt/street_index"
+keywords = ["street index", "cartography", "map", "gis" ]
+categories = ["data-structures"]
+license = "MIT"
+repository = "https://github.com/fschutt/street_index"
+readme = "README.md"
 
 [dependencies]
