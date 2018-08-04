@@ -39,8 +39,13 @@ impl Grid {
         let min_position_x = (rect.x_from_left.0 / self.config.cell_width.0).floor() as usize;
         let max_position_x = ((rect.x_from_left.0 + rect.width.0) / self.config.cell_width.0).floor() as usize;
 
-        let min_position_y = (rect.y_from_top.0 / self.config.cell_height.0).floor() as usize;
-        let max_position_y = ((rect.y_from_top.0 + rect.height.0) / self.config.cell_height.0).floor() as usize;
+        let mut min_position_y = (rect.y_from_top.0 / self.config.cell_height.0).floor() as usize;
+        let mut max_position_y = ((rect.y_from_top.0 + rect.height.0) / self.config.cell_height.0).floor() as usize;
+
+        // Y positions have to be adjusted by 1
+        // We don't want maps to start at row 0, but rather at row 1
+        min_position_y += 1;
+        max_position_y += 1;
 
         match (min_position_x == max_position_x, min_position_y == max_position_y) {
             (true, true) => {
