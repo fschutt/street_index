@@ -9,12 +9,8 @@ pub struct Grid {
 
 #[derive(Debug, Copy, Clone)]
 pub struct GridConfig {
-    pub rows: usize,
-    pub columns: usize,
-    pub row_direction: Ordering,
-    pub column_direction: Ordering,
-    pub row_offset: usize,
-    pub column_offset: usize,
+    pub cell_height: Millimeter,
+    pub cell_width: Millimeter,
 }
 
 #[derive(Debug, Clone)]
@@ -39,14 +35,90 @@ impl Grid {
 
     pub fn insert_font(&mut self, rect: StreetNameRect) {
 
+        // ignore direction, etc. for now
+        let min_position_x = (rect.x_from_left.0 / self.config.cell_width.0).floor() as usize;
+        let max_position_x = ((rect.x_from_left.0 + rect.width.0) / self.config.cell_width.0).floor() as usize;
 
-        self.fonts.push(InputStreetValue {
-            street_name: StreetName(rect.street_name),
-            position: GridPosition {
-                column: String::from("A"),
-                row: 4,
+        let min_position_y = (rect.y_from_top.0 / self.config.cell_height.0).floor() as usize;
+        let max_position_y = ((rect.y_from_top.0 + rect.height.0) / self.config.cell_height.0).floor() as usize;
+
+        match (min_position_x == max_position_x, min_position_y == max_position_y) {
+            (true, true) => {
+                // Street name is contained within one rectangle
+                self.fonts.push(InputStreetValue {
+                    street_name: StreetName(rect.street_name.clone()),
+                    position: GridPosition {
+                        column: number_to_alphabet_value(min_position_x),
+                        row: min_position_y,
+                    }
+                });
+            },
+            (true, false) => {
+                // Street name is contained within one column
+                self.fonts.push(InputStreetValue {
+                    street_name: StreetName(rect.street_name.clone()),
+                    position: GridPosition {
+                        column: number_to_alphabet_value(min_position_x),
+                        row: min_position_y,
+                    }
+                });
+                self.fonts.push(InputStreetValue {
+                    street_name: StreetName(rect.street_name.clone()),
+                    position: GridPosition {
+                        column: number_to_alphabet_value(min_position_x),
+                        row: max_position_y,
+                    }
+                });
+            },
+            (false, true) => {
+                // Street name is contained within one row
+                self.fonts.push(InputStreetValue {
+                    street_name: StreetName(rect.street_name.clone()),
+                    position: GridPosition {
+                        column: number_to_alphabet_value(min_position_x),
+                        row: min_position_y,
+                    }
+                });
+                self.fonts.push(InputStreetValue {
+                    street_name: StreetName(rect.street_name.clone()),
+                    position: GridPosition {
+                        column: number_to_alphabet_value(max_position_x),
+                        row: min_position_y,
+                    }
+                });
+            },
+            (false, false) => {
+                // Street name overlaps 4 quadrants
+                self.fonts.push(InputStreetValue {
+                    street_name: StreetName(rect.street_name.clone()),
+                    position: GridPosition {
+                        column: number_to_alphabet_value(min_position_x),
+                        row: min_position_y,
+                    }
+                });
+                self.fonts.push(InputStreetValue {
+                    street_name: StreetName(rect.street_name.clone()),
+                    position: GridPosition {
+                        column: number_to_alphabet_value(min_position_x),
+                        row: max_position_y,
+                    }
+                });
+                self.fonts.push(InputStreetValue {
+                    street_name: StreetName(rect.street_name.clone()),
+                    position: GridPosition {
+                        column: number_to_alphabet_value(max_position_x),
+                        row: min_position_y,
+                    }
+                });
+                self.fonts.push(InputStreetValue {
+                    street_name: StreetName(rect.street_name.clone()),
+                    position: GridPosition {
+                        column: number_to_alphabet_value(max_position_x),
+                        row: max_position_y,
+                    }
+                });
             }
-        });
+        }
     }
 
     pub fn into_street_names(self) -> Vec<InputStreetValue> {
@@ -64,22 +136,16 @@ impl Grid {
 /// ```
 ///
 /// ... and so on
-pub fn number_to_alphabet_value(num: usize) -> String {
+fn number_to_alphabet_value(num: usize) -> String {
 
     const ALPHABET_LEN: usize = 26;
 
     let mut result = Vec::<char>::new();
 
     // How many times does 26 fit in the target number?
-    // Ex. input: 35 (AZ)
-    // 
-    // .. in that case multiple_of_alphabet will be 1, meaning A
-    // 
-    // 
     let mut multiple_of_alphabet = num / ALPHABET_LEN;
 
     while multiple_of_alphabet != 0 {
-        // 
         let remainder = (multiple_of_alphabet - 1) % ALPHABET_LEN;
         result.push(u8_to_char(remainder as u8));
         multiple_of_alphabet = (multiple_of_alphabet - 1) / ALPHABET_LEN;
@@ -112,7 +178,6 @@ fn test_number_to_alphabet_value() {
     assert_eq!(number_to_alphabet_value(1), String::from("B"));
     assert_eq!(number_to_alphabet_value(6), String::from("G"));
     assert_eq!(number_to_alphabet_value(26), String::from("AA"));
-
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

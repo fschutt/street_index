@@ -6,3 +6,7 @@ pub use roads2csv::{
     ProcessedRoadNames, UnprocessedRoad, UnprocessedRoadNames,
     StreetName, GridPosition, FinalizedGridPositon,
 };
+
+pub use gridconfig::{
+	Grid, GridConfig, Bbox, Millimeter, StreetNameRect,
+};
