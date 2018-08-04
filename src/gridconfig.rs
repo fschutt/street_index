@@ -8,6 +8,15 @@ pub struct Grid {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub struct Millimeter(pub f32);
+
+#[derive(Debug, Copy, Clone)]
+pub struct Bbox {
+    pub width: Millimeter,
+    pub height: Millimeter,
+}
+
+#[derive(Debug, Copy, Clone)]
 pub struct GridConfig {
     pub cell_height: Millimeter,
     pub cell_width: Millimeter,
@@ -47,82 +56,46 @@ impl Grid {
         min_position_y += 1;
         max_position_y += 1;
 
-        match (min_position_x == max_position_x, min_position_y == max_position_y) {
+        let positions_to_add = match (min_position_x == max_position_x, min_position_y == max_position_y) {
             (true, true) => {
                 // Street name is contained within one rectangle
-                self.fonts.push(InputStreetValue {
-                    street_name: StreetName(rect.street_name.clone()),
-                    position: GridPosition {
-                        column: number_to_alphabet_value(min_position_x),
-                        row: min_position_y,
-                    }
-                });
+                vec![
+                    (number_to_alphabet_value(min_position_x), min_position_y),
+                ]
             },
             (true, false) => {
                 // Street name is contained within one column
-                self.fonts.push(InputStreetValue {
-                    street_name: StreetName(rect.street_name.clone()),
-                    position: GridPosition {
-                        column: number_to_alphabet_value(min_position_x),
-                        row: min_position_y,
-                    }
-                });
-                self.fonts.push(InputStreetValue {
-                    street_name: StreetName(rect.street_name.clone()),
-                    position: GridPosition {
-                        column: number_to_alphabet_value(min_position_x),
-                        row: max_position_y,
-                    }
-                });
+                vec![
+                    (number_to_alphabet_value(min_position_x), min_position_y), 
+                    (number_to_alphabet_value(min_position_x), max_position_y),
+                ]
             },
             (false, true) => {
                 // Street name is contained within one row
-                self.fonts.push(InputStreetValue {
-                    street_name: StreetName(rect.street_name.clone()),
-                    position: GridPosition {
-                        column: number_to_alphabet_value(min_position_x),
-                        row: min_position_y,
-                    }
-                });
-                self.fonts.push(InputStreetValue {
-                    street_name: StreetName(rect.street_name.clone()),
-                    position: GridPosition {
-                        column: number_to_alphabet_value(max_position_x),
-                        row: min_position_y,
-                    }
-                });
+                vec![
+                    (number_to_alphabet_value(min_position_x), min_position_y), 
+                    (number_to_alphabet_value(max_position_x), min_position_y),
+                ]
             },
             (false, false) => {
                 // Street name overlaps 4 quadrants
-                self.fonts.push(InputStreetValue {
-                    street_name: StreetName(rect.street_name.clone()),
-                    position: GridPosition {
-                        column: number_to_alphabet_value(min_position_x),
-                        row: min_position_y,
-                    }
-                });
-                self.fonts.push(InputStreetValue {
-                    street_name: StreetName(rect.street_name.clone()),
-                    position: GridPosition {
-                        column: number_to_alphabet_value(min_position_x),
-                        row: max_position_y,
-                    }
-                });
-                self.fonts.push(InputStreetValue {
-                    street_name: StreetName(rect.street_name.clone()),
-                    position: GridPosition {
-                        column: number_to_alphabet_value(max_position_x),
-                        row: min_position_y,
-                    }
-                });
-                self.fonts.push(InputStreetValue {
-                    street_name: StreetName(rect.street_name.clone()),
-                    position: GridPosition {
-                        column: number_to_alphabet_value(max_position_x),
-                        row: max_position_y,
-                    }
-                });
+                vec![
+                    (number_to_alphabet_value(min_position_x), min_position_y),
+                    (number_to_alphabet_value(min_position_x), max_position_y),
+                    (number_to_alphabet_value(max_position_x), min_position_y),
+                    (number_to_alphabet_value(max_position_x), max_position_y),
+                ]
             }
+        };
+
+        for (column, row) in positions_to_add {
+            self.fonts.push(InputStreetValue {
+                street_name: StreetName(rect.street_name.clone()),
+                position: GridPosition {
+                    column,
+                    row,
+                }
+            });
         }
     }
 
@@ -141,7 +114,7 @@ impl Grid {
 /// ```
 ///
 /// ... and so on
-fn number_to_alphabet_value(num: usize) -> String {
+pub fn number_to_alphabet_value(num: usize) -> String {
 
     const ALPHABET_LEN: usize = 26;
 
@@ -183,19 +156,6 @@ fn test_number_to_alphabet_value() {
     assert_eq!(number_to_alphabet_value(1), String::from("B"));
     assert_eq!(number_to_alphabet_value(6), String::from("G"));
     assert_eq!(number_to_alphabet_value(26), String::from("AA"));
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum Ordering {
-    RightToLeft,
-    LeftToRight,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct Millimeter(pub f32);
-
-#[derive(Debug, Copy, Clone)]
-pub struct Bbox {
-    pub width: Millimeter,
-    pub height: Millimeter,
+    assert_eq!(number_to_alphabet_value(27), String::from("AB"));
+    assert_eq!(number_to_alphabet_value(225), String::from("HR"));
 }

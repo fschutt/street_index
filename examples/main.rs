@@ -1,6 +1,6 @@
 extern crate street_index;
 
-use street_index::*;
+use street_index::prelude::*;
 
 fn main() {
     let mut grid = Grid::new(
