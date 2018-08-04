@@ -1,4 +1,4 @@
-//! # index2csv
+//! # street_index
 //! 
 //! [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 //! [![Build Status Linux / macOS](https://travis-ci.org/fschutt/street_index.svg?branch=master)](https://travis-ci.org/fschutt/street_index)
