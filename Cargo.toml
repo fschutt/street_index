@@ -14,4 +14,8 @@ license = "MIT"
 repository = "https://github.com/fschutt/street_index"
 readme = "README.md"
 
+[badges]
+travis-ci = { repository = "fschutt/street_index" }
+appveyor = { repository = "fschutt/street-index" }
+
 [dependencies]

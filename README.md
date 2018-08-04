@@ -2,7 +2,7 @@
 
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status Linux / macOS](https://travis-ci.org/fschutt/street_index.svg?branch=master)](https://travis-ci.org/fschutt/street_index)
-[![Build status Windows](https://ci.appveyor.com/api/projects/status/p487hewqh6bxeucv?svg=true)](https://ci.appveyor.com/project/fschutt/street_index)
+[![Build status Windows](https://ci.appveyor.com/api/projects/status/0579ea95rbpliyhi?svg=true)](https://ci.appveyor.com/project/fschutt/street-index)
 [![Rust Compiler Version](https://img.shields.io/badge/rustc-1.26%20stable-blue.svg)]()
 
 This library contains utility functions for generating a street index.
