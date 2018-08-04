@@ -35,7 +35,5 @@ fn main() {
     println!("unprocessed:\r\n{}", unprocessed.to_csv());
     */
 
-    for i in 0..700 {
-        println!("{} - {}", i, number_to_alphabet_value(i));
-    }
+    println!("{}", number_to_alphabet_value(3356));
 }

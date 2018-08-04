@@ -54,10 +54,6 @@ impl Grid {
     }
 }
 
-const NUM_MIN: u8 = 'A' as u8;
-const NUM_MAX: u8 = 'Z' as u8;
-const CHAR_DIFF: u8 = NUM_MAX - NUM_MIN + 1;
-
 /// Maps an index number to a value, necessary for creating the street index. i.e.:
 ///
 /// ```no_run,ignore
@@ -70,37 +66,37 @@ const CHAR_DIFF: u8 = NUM_MAX - NUM_MIN + 1;
 /// ... and so on
 pub fn number_to_alphabet_value(num: usize) -> String {
 
-    let mut result = String::new();
+    const ALPHABET_LEN: usize = 26;
 
-    // input: 6
-    // expected output: G (7th letter of the alphabet)
-    //
-    // calculation:
-    // real = 0 since 6.0 / 25.0 = 0.24 and 0.24.floor() = 0
-    // rem = 6
-    let mut real = (num as f32 / CHAR_DIFF as f32).floor() as usize;
-    let mut rem = real % CHAR_DIFF as usize;
+    let mut result = Vec::<char>::new();
 
-    println!("real is initially: {}", real);
-    println!("rem is initially: {}", rem);
+    // How many times does 26 fit in the target number?
+    // Ex. input: 35 (AZ)
+    // 
+    // .. in that case multiple_of_alphabet will be 1, meaning A
+    // 
+    // 
+    let mut multiple_of_alphabet = num / ALPHABET_LEN;
 
-    while real != 0 {
-        // ZA: num = 675 = real = 26
-        // 26 % 26 = 0
-        result.push(u8_to_char((rem - 1) as u8));
-        rem = real % CHAR_DIFF as usize;
-        real = (real as f32 / CHAR_DIFF as f32).floor() as usize;
-        println!("real is now: {}", real);
+    while multiple_of_alphabet != 0 {
+        // 
+        let remainder = (multiple_of_alphabet - 1) % ALPHABET_LEN;
+        result.push(u8_to_char(remainder as u8));
+        multiple_of_alphabet = (multiple_of_alphabet - 1) / ALPHABET_LEN;
     }
 
-    let final_rem = (num - real * CHAR_DIFF as usize) % CHAR_DIFF as usize;
-    result.push(u8_to_char(final_rem as u8));
+    // Reverse the current characters
+    let mut result = result.into_iter().rev().collect::<String>();
 
+    // Push the last characters
+    result.push(u8_to_char((num % ALPHABET_LEN) as u8));
+    
     result
+
 }
 
 fn u8_to_char(input: u8) -> char {
-    (NUM_MIN + input) as char
+    ('A' as u8 + input) as char
 }
 
 #[test]
