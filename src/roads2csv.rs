@@ -41,7 +41,7 @@ impl DeduplicatedRoads {
     ///
     /// Input:
     ///
-    /// ```
+    /// ```no_run,ignore
     /// Mayer Street A4
     /// Mayer Street A5
     /// Mayer Street A6
@@ -49,7 +49,7 @@ impl DeduplicatedRoads {
     ///
     /// Output:
     ///
-    /// ```
+    /// ```no_run,ignore
     /// Mayer Street -> [A4, A5, A6]
     /// ```
     ///
