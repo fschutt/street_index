@@ -1,5 +1,5 @@
 [package]
-name = "index2csv"
+name = "street_index"
 version = "0.1.0"
 authors = ["Felix Schütt <felix.schuett@maps4print.com>"]
 

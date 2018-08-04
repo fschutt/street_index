@@ -1,8 +1,10 @@
+//! Converts input roads to a final CSV
+
 use std::{fmt, collections::{BTreeMap, BTreeSet}};
 
 /// Name of one street ()
 #[derive(Debug, Clone, PartialEq, Ord, PartialOrd, Eq, Hash)]
-struct StreetName(pub String);
+pub struct StreetName(pub String);
 
 impl fmt::Display for StreetName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -10,18 +12,17 @@ impl fmt::Display for StreetName {
     }
 }
 
-///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct InputStreetValue {
-    street_name: StreetName,
-    position: GridPosition,
+pub struct InputStreetValue {
+    pub street_name: StreetName,
+    pub position: GridPosition,
 }
 
 /// Grid position such as "A9", "B4" or similar
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct GridPosition {
-    column: String,
-    row: usize,
+pub struct GridPosition {
+    pub column: String,
+    pub row: usize,
 }
 
 impl fmt::Display for GridPosition {
@@ -31,8 +32,8 @@ impl fmt::Display for GridPosition {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct DeduplicatedRoads {
-    roads: BTreeMap<StreetName, BTreeSet<GridPosition>>,
+pub struct DeduplicatedRoads {
+    pub roads: BTreeMap<StreetName, BTreeSet<GridPosition>>,
 }
 
 impl DeduplicatedRoads {
@@ -138,7 +139,7 @@ fn test_format_street() {
     assert_eq!(format!("{}", road_pos_1), String::from("A9-I5"));
 }
 
-enum FinalizedGridPositon {
+pub enum FinalizedGridPositon {
     /// Road is contained within a single rect, i.e. "Valley Road -> A6"
     SingleRect(GridPosition),
     /// Road crosses exactly two grids
@@ -157,9 +158,9 @@ impl fmt::Display for FinalizedGridPositon {
     }
 }
 
-struct ProcessedRoad {
-    name: StreetName,
-    position: FinalizedGridPositon,
+pub struct ProcessedRoad {
+    pub name: StreetName,
+    pub position: FinalizedGridPositon,
 }
 
 impl fmt::Display for ProcessedRoad {
@@ -168,9 +169,9 @@ impl fmt::Display for ProcessedRoad {
     }
 }
 
-struct UnprocessedRoad {
-    name: StreetName,
-    positions: Vec<GridPosition>,
+pub struct UnprocessedRoad {
+    pub name: StreetName,
+    pub positions: Vec<GridPosition>,
 }
 
 impl fmt::Display for UnprocessedRoad {
@@ -180,8 +181,8 @@ impl fmt::Display for UnprocessedRoad {
     }
 }
 
-struct ProcessedRoadNames {
-    processed: Vec<ProcessedRoad>,
+pub struct ProcessedRoadNames {
+    pub processed: Vec<ProcessedRoad>,
 }
 
 impl ProcessedRoadNames {
@@ -190,43 +191,12 @@ impl ProcessedRoadNames {
     }
 }
 
-struct UnprocessedRoadNames {
-    unprocessed: Vec<UnprocessedRoad>,
+pub struct UnprocessedRoadNames {
+    pub unprocessed: Vec<UnprocessedRoad>,
 }
 
 impl UnprocessedRoadNames {
     pub fn to_csv(self) -> String {
         self.unprocessed.into_iter().map(|processed_road| format!("{}", processed_road)).collect::<Vec<String>>().join("\r\n")
     }
-}
-
-fn main() {
-    let road_names = [
-        InputStreetValue {
-            street_name: StreetName(String::from("Valley View Road")),
-            position: GridPosition {
-                column: String::from("A"),
-                row: 4,
-            }
-        },
-        InputStreetValue {
-            street_name: StreetName(String::from("Valley View Road")),
-            position: GridPosition {
-                column: String::from("A"),
-                row: 5,
-            }
-        },
-        InputStreetValue {
-            street_name: StreetName(String::from("Valley View Road")),
-            position: GridPosition {
-                column: String::from("B"),
-                row: 6,
-            }
-        },
-    ];
-
-    let deduplicated = DeduplicatedRoads::from_streets(&road_names);
-    let (processed, unprocessed) = deduplicated.process();
-    println!("processed:\r\n{}\r\n", processed.to_csv());
-    println!("unprocessed:\r\n{}", unprocessed.to_csv());
 }
