@@ -171,7 +171,7 @@ pub fn number_to_alphabet_value(num: usize) -> String {
         multiple_of_alphabet = (multiple_of_alphabet - 1) / ALPHABET_LEN;
     }
 
-    let len = (MAX_LEN - 1).saturating_sub(counter);
+    let len = MAX_LEN.saturating_sub(counter);
     // Reverse the current characters
     let mut result = result[len..MAX_LEN].iter().map(|c| *c as char).collect::<String>();
 
