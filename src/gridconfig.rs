@@ -155,37 +155,35 @@ impl Grid {
 pub fn number_to_alphabet_value(num: usize) -> String {
 
     const ALPHABET_LEN: usize = 26;
-
-    let mut result = Vec::<char>::new();
+    // usize::MAX is "GKGWBYLWRXTLPP" with a length of 15 characters
+    const MAX_LEN: usize = 15;
+    
+    let mut result = [0;MAX_LEN];
 
     // How many times does 26 fit in the target number?
     let mut multiple_of_alphabet = num / ALPHABET_LEN;
-
-    while multiple_of_alphabet != 0 {
+    let mut counter = 0;
+    
+    while multiple_of_alphabet != 0 && counter < MAX_LEN {
         let remainder = (multiple_of_alphabet - 1) % ALPHABET_LEN;
-        result.push(u8_to_char(remainder as u8));
+        result[(MAX_LEN - 1) - counter] = u8_to_char(remainder as u8);
+        counter += 1;
         multiple_of_alphabet = (multiple_of_alphabet - 1) / ALPHABET_LEN;
     }
 
+    let len = (MAX_LEN - 1).saturating_sub(counter);
     // Reverse the current characters
-    let mut result = result.into_iter().rev().collect::<String>();
+    let mut result = result[len..MAX_LEN].iter().map(|c| *c as char).collect::<String>();
 
-    // Push the last characters
-    result.push(u8_to_char((num % ALPHABET_LEN) as u8));
+    // Push the last character
+    result.push(u8_to_char((num % ALPHABET_LEN) as u8) as char);
     
     result
-
 }
 
-fn u8_to_char(input: u8) -> char {
-    ('A' as u8 + input) as char
-}
-
-#[test]
-fn u8_to_char_test() {
-    assert_eq!(u8_to_char(0), 'A');
-    assert_eq!(u8_to_char(6), 'G');
-    assert_eq!(u8_to_char(25), 'Z');
+#[inline(always)]
+fn u8_to_char(input: u8) -> u8 {
+    'A' as u8 + input
 }
 
 #[test]
