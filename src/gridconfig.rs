@@ -1,11 +1,11 @@
 use roads2csv::{InputStreetValue, StreetName, GridPosition};
 
-/// The Grid is your street-name grid. Right now there is 
+/// The Grid is your street-name grid. Right now there is
 /// no support for curved / rotated / translated grids.
 ///
-/// Usually you'll want to initialize this from the page 
-/// boundaries of your final map, i.e. if you have a map that 
-/// is (on paper) 290 x 210 mm wide. 
+/// Usually you'll want to initialize this from the page
+/// boundaries of your final map, i.e. if you have a map that
+/// is (on paper) 290 x 210 mm wide.
 ///
 /// The `config` is for future use to be extended - right now
 /// it only stores how big the cells should be. In normal
@@ -30,11 +30,11 @@ pub struct Bbox {
 }
 
 /// Later on this struct will be extended with parameters for
-/// curving, rotations, offsets, labeling, etc. Right now 
+/// curving, rotations, offsets, labeling, etc. Right now
 /// it's just: how big should one cell be?
 ///
-/// Cells start at the top left (again, later on this will 
-/// likely be configurable although I haven't seen a map where 
+/// Cells start at the top left (again, later on this will
+/// likely be configurable although I haven't seen a map where
 // the grid didn't start at the top left).
 #[derive(Debug, Copy, Clone)]
 pub struct GridConfig {
@@ -43,15 +43,15 @@ pub struct GridConfig {
 }
 
 /// Represents one street name, layouted on the map. The `StreetNameRect`
-/// should be the extent of the font, not of the road itself, because 
+/// should be the extent of the font, not of the road itself, because
 /// if someone is searching for a road on a map, he will usually scan for the
 /// name of the road, not the line of the road. So inserting the extents
 /// of the actual road line could lead to problems.
 ///
 /// Calculating these extents should be done via RustType / FreeType or
-/// similar, depending on what font you choose. The bounding box should be the 
+/// similar, depending on what font you choose. The bounding box should be the
 /// minimumn bounding rectangle of the characters that make up the street name.
-/// 
+///
 /// For cartographic projections, you have to project the
 /// fonts into this coordinate space before adding them, obviously.
 /// `street_index` does not take care of any geographic reprojections.
@@ -78,7 +78,7 @@ impl Grid {
 
     /// Inserts a street and assigns a `GridPosition` (such as "A2" or "B4") to the
     /// road. Note that a `StreetNameRect` may span more than one rectangle, in which
-    /// case the road name will be duplicated 
+    /// case the road name will be duplicated
     pub fn insert_street(&mut self, rect: StreetNameRect) {
 
         // ignore direction, etc. for now
@@ -103,14 +103,14 @@ impl Grid {
             (true, false) => {
                 // Street name is contained within one column
                 vec![
-                    (number_to_alphabet_value(min_position_x), min_position_y), 
+                    (number_to_alphabet_value(min_position_x), min_position_y),
                     (number_to_alphabet_value(min_position_x), max_position_y),
                 ]
             },
             (false, true) => {
                 // Street name is contained within one row
                 vec![
-                    (number_to_alphabet_value(min_position_x), min_position_y), 
+                    (number_to_alphabet_value(min_position_x), min_position_y),
                     (number_to_alphabet_value(max_position_x), min_position_y),
                 ]
             },
@@ -153,36 +153,89 @@ impl Grid {
 ///
 /// ... and so on
 pub fn number_to_alphabet_value(num: usize) -> String {
-
+    // Maximum character count range is 26 characters, A to Z
     const ALPHABET_LEN: usize = 26;
     // usize::MAX is "GKGWBYLWRXTLPP" with a length of 15 characters
     const MAX_LEN: usize = 15;
-    
-    let mut result = [0;MAX_LEN];
+
+    // Initialize an array of 15 characters all to 0
+    let mut result = [0;MAX_LEN + 1];
+
+    // ** For this example, assume that we get the number 80000 **
 
     // How many times does 26 fit in the target number?
+    // 80000 / 26 = 3076
     let mut multiple_of_alphabet = num / ALPHABET_LEN;
-    let mut counter = 0;
-    
-    while multiple_of_alphabet != 0 && counter < MAX_LEN {
+
+    // How many characters have we created in the loop?
+    let mut character_count = 0;
+
+
+    // If multiple_of_alphabet is 0, that means that `num` has decreased
+    // to a range between 0 and 26.
+    //
+    // `counter < MAX_LEN` is just so that the optimizer can
+    // unroll the loop without bounds-checking.
+    while multiple_of_alphabet != 0 && character_count < MAX_LEN {
+        // The "remainder" is our target character that we push into the array.
+        //
+        // For example, if `multiple_of_alphabet` is 3076, that means that
+        // num is in the range of (26 * 3076) to (26 * 3077).
+        //
+        // Therefore, we want to take the remainder of the last place, essentially:
+        // (3076 - 1) % 26 = 7 = "H"
         let remainder = (multiple_of_alphabet - 1) % ALPHABET_LEN;
-        result[(MAX_LEN - 1) - counter] = u8_to_char(remainder as u8);
-        counter += 1;
+        // Push the "H" into the array
+        result[(MAX_LEN - 1) - character_count] = u8_to_char(remainder as u8);
+        // We pushed one character, increase the character_count by 1
+        character_count += 1;
+        // Now we prepare the next character - currently, multiple_of_alphabet is 3075.
+        // Integer division always rounds down, which is useful property:
+        // Now our array is:
+        //
+        // [0, 0, 0, ... "H", 0]
+        // (3076 - 1) / 26 = 118
+        //
+        // The next iteration will be:
+        //
+        // (118 - 1) % 26 = 13 = "N"
+        // [0, 0, 0, ... "N", "H", 0]
+        // (118 - 1) / 26 = 4
+        //
+        // (4 - 1) % 26 = 4 = "D"
+        // [0, 0, 0, ... "D", "N", "H", 0]
+        // (4 - 1) / 26 = 0 = quit the loop
         multiple_of_alphabet = (multiple_of_alphabet - 1) / ALPHABET_LEN;
     }
 
-    let len = MAX_LEN.saturating_sub(counter);
-    // Reverse the current characters
-    let mut result = result[len..MAX_LEN].iter().map(|c| *c as char).collect::<String>();
+    // Last character: 80.000 % 26 = 24 = "Y"
+    // [0, 0, 0, ... "D", "N", "H", "Y"]
+    result[MAX_LEN] = u8_to_char((num % ALPHABET_LEN) as u8);
 
-    // Push the last character
-    result.push(u8_to_char((num % ALPHABET_LEN) as u8) as char);
-    
-    result
+    // count is 3, since we pushed 3 characters
+    // zeroed_characters will be the offset from the start of the array
+    //
+    // so: 15 - 3 = 12, to take the characters from 12 to 16 (the array is [MAX_LEN + 1]).
+    //
+    // zeroed_characters is the number of characters that are still set to 0
+    // in the result array. We want to ignore all characters that are set to 0.
+    //
+    // Note that this is MAX_LEN, not MAX_LEN + 1
+    let zeroed_characters = MAX_LEN.saturating_sub(character_count);
+
+    // We take a slice from the zeroed_characters to the end of the array
+    // (i.e. MAX_LEN + 1). Note that we have to include the final character.
+    let slice = &result[zeroed_characters..];
+
+    // Cast the slice to a string, since we know that we only have ASCII
+    // characters in the range from A to Z, there won't be any UTF-8 problems
+    unsafe { ::std::str::from_utf8_unchecked(slice) }.to_string()
 }
 
+// Transform from 0 to A, 1 to B, etc.
 #[inline(always)]
 fn u8_to_char(input: u8) -> u8 {
+    // use 'a' as u8 to create lowercase characters
     'A' as u8 + input
 }
 
@@ -194,4 +247,20 @@ fn test_number_to_alphabet_value() {
     assert_eq!(number_to_alphabet_value(26), String::from("AA"));
     assert_eq!(number_to_alphabet_value(27), String::from("AB"));
     assert_eq!(number_to_alphabet_value(225), String::from("HR"));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::Bencher;
+    use test;
+
+    #[bench]
+    fn bench_add_two(b: &mut Bencher) {
+
+        b.iter(|| {
+            let n = test::black_box(1000);
+            number_to_alphabet_value(n);
+        });
+    }
 }
