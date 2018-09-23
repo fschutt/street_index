@@ -103,8 +103,8 @@
 //! ## License
 //!
 //! This library is licensed under the MIT license.
-#![feature(test)]
-
+#![cfg_attr(feature = "nightly", feature(test))]
+#[cfg(feature = "nightly")]
 extern crate test;
 
 /// Module for configuring the grid and assigning cell positions to road names

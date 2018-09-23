@@ -249,17 +249,17 @@ fn test_number_to_alphabet_value() {
     assert_eq!(number_to_alphabet_value(225), String::from("HR"));
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "nightly"))]
 mod tests {
     use super::*;
     use test::Bencher;
     use test;
 
     #[bench]
-    fn bench_add_two(b: &mut Bencher) {
+    fn bench_number_to_alphabet_value(b: &mut Bencher) {
 
         b.iter(|| {
-            let n = test::black_box(1000);
+            let n = test::black_box(usize::max_value());
             number_to_alphabet_value(n);
         });
     }

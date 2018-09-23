@@ -3,7 +3,7 @@ name = "street_index"
 version = "0.1.1"
 authors = ["Felix Schütt <felix.schuett@maps4print.com>"]
 description = '''
-    street_index is a small utility crate for working with road name / 
+    street_index is a small utility crate for working with road name /
     street indexing for cartographic purposes
 '''
 documentation = "https://docs.rs/street_index"
@@ -19,3 +19,6 @@ travis-ci = { repository = "fschutt/street_index" }
 appveyor = { repository = "fschutt/street-index" }
 
 [dependencies]
+
+[features]
+nightly = [] # for cargo bench
