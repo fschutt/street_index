@@ -225,7 +225,7 @@ pub fn number_to_alphabet_value(num: usize) -> String {
 
     // We take a slice from the zeroed_characters to the end of the array
     // (i.e. MAX_LEN + 1). Note that we have to include the final character.
-    let slice = &result[zeroed_characters..];
+    let slice = unsafe { result.get_unchecked(zeroed_characters..) };
 
     // Cast the slice to a string, since we know that we only have ASCII
     // characters in the range from A to Z, there won't be any UTF-8 problems
