@@ -111,6 +111,8 @@ extern crate test;
 pub mod gridconfig;
 /// Module for deduplicating road names and exporting / processing them to CSV
 pub mod roads2csv;
+/// Module for resolving the names in three or more grid squares with the course of their streets
+pub mod ranges;
 /// Quick re-exports for wildcard imports
 pub mod prelude {
 	pub use roads2csv::{
@@ -120,6 +122,10 @@ pub mod prelude {
 	};
 
 	pub use gridconfig::{
-		Grid, GridConfig, Bbox, Millimeter, StreetNameRect,
+		Grid, GridConfig, Bbox, Millimeter, StreetNameRect, StreetLine,
+	};
+
+	pub use ranges::{
+		GridRange, ResolvedRoad, ResolvedRoads,
 	};
 }

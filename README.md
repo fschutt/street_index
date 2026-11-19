@@ -40,6 +40,24 @@ that your graphic designer can paste the street index into InDesign /
 Illustrator for the final map layout. Both `UnprocessedRoads` and 
 `ProcessedRoads` have a simple `.to_csv` function for easy export.
 
+## Names in three or more squares
+
+`process()` hands every name in three or more squares back for manual review, because the
+squares alone cannot tell two roads of one name from one long road. Give the grid the course of
+the streets too (`Grid::insert_street_line`, a polyline in millimeters from the top left of the
+page) and `DeduplicatedRoads::resolve` does the review: per street of the name the squares it
+passes (5 mm of it in a square) make one range, ranges that touch are one range, so
+`"Nordring" => A1-D1`, or `"Ring" => A1-B1, D3-F3` for two streets of one name. A name in one
+square, or in two next to each other, comes out as `process()` prints it.
+
+`insert_street` only takes the part of a name on the page: a name beyond the page is not listed
+(it used to land in row 1 or in a column past the grid).
+
+```rust
+let roads = DeduplicatedRoads::from_streets(&grid.street_names()).resolve(&grid);
+println!("{}", roads.to_csv("\t"));
+```
+
 ## Example
 
 ```rust

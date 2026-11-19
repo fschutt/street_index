@@ -1,6 +1,6 @@
 [package]
 name = "street_index"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Felix Schütt <felix.schuett@maps4print.com>"]
 description = '''
     street_index is a small utility crate for working with road name /

@@ -15,6 +15,7 @@ pub struct Grid {
     pub bbox: Bbox,
     pub config: GridConfig,
     fonts: Vec<InputStreetValue>,
+    lines: Vec<StreetLine>,
 }
 
 /// Unit struct just so it's easier to read that certain values
@@ -40,6 +41,17 @@ pub struct Bbox {
 pub struct GridConfig {
     pub cell_height: Millimeter,
     pub cell_width: Millimeter,
+}
+
+/// The course of one street on the map: where its road runs, as a line (a polyline in
+/// millimeters from the top left of the page). The grid has it for names in three or more grid
+/// squares: `DeduplicatedRoads::resolve` finds out from the lines which squares belong to one
+/// road and which to another road of the same name. Unlike a `StreetNameRect` this is the road
+/// itself, not its label.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StreetLine {
+    pub street_name: StreetName,
+    pub points: Vec<(f32, f32)>,
 }
 
 /// Represents one street name, layouted on the map. The `StreetNameRect`
@@ -73,20 +85,43 @@ impl Grid {
             bbox,
             config,
             fonts: Vec::new(),
+            lines: Vec::new(),
         }
+    }
+
+    /// How many columns and rows the page has: its size over the size of a cell, rounded up
+    pub fn size(&self) -> (usize, usize) {
+        let columns = (self.bbox.width.0 / self.config.cell_width.0).ceil();
+        let rows = (self.bbox.height.0 / self.config.cell_height.0).ceil();
+        (columns.max(1.0) as usize, rows.max(1.0) as usize)
     }
 
     /// Inserts a street and assigns a `GridPosition` (such as "A2" or "B4") to the
     /// road. Note that a `StreetNameRect` may span more than one rectangle, in which
     /// case the road name will be duplicated
+    ///
+    /// Only the part of the rectangle on the page counts: a name that lies beyond the page
+    /// is not inserted (it used to land in row 1 or in a column beyond the grid), and one that
+    /// ends exactly on the page's edge does not get a column or row of its own.
     pub fn insert_street(&mut self, rect: StreetNameRect) {
 
-        // ignore direction, etc. for now
-        let min_position_x = (rect.x_from_left.0 / self.config.cell_width.0).floor() as usize;
-        let max_position_x = ((rect.x_from_left.0 + rect.width.0) / self.config.cell_width.0).floor() as usize;
+        // the part on the page; the far edges just inside it, as a rectangle that ends on a
+        // grid line does not reach into the next square
+        let edge = 0.001;
+        let (x0, y0) = (rect.x_from_left.0.max(0.0), rect.y_from_top.0.max(0.0));
+        let x1 = (rect.x_from_left.0 + rect.width.0).min(self.bbox.width.0 - edge);
+        let y1 = (rect.y_from_top.0 + rect.height.0).min(self.bbox.height.0 - edge);
+        // (also false for a rectangle with a NaN)
+        if !(x1 >= x0 && y1 >= y0) {
+            return;
+        }
 
-        let mut min_position_y = (rect.y_from_top.0 / self.config.cell_height.0).floor() as usize;
-        let mut max_position_y = ((rect.y_from_top.0 + rect.height.0) / self.config.cell_height.0).floor() as usize;
+        // ignore direction, etc. for now
+        let min_position_x = (x0 / self.config.cell_width.0).floor() as usize;
+        let max_position_x = (x1 / self.config.cell_width.0).floor() as usize;
+
+        let mut min_position_y = (y0 / self.config.cell_height.0).floor() as usize;
+        let mut max_position_y = (y1 / self.config.cell_height.0).floor() as usize;
 
         // Y positions have to be adjusted by 1
         // We don't want maps to start at row 0, but rather at row 1
@@ -139,6 +174,60 @@ impl Grid {
     /// Returns all the fonts in the grid that were added previously
     pub fn street_names(&self) -> Vec<InputStreetValue> {
         self.fonts.clone()
+    }
+
+    /// Inserts the course of a street (a polyline in millimeters from the top left of the
+    /// page): where a road of this name runs. Not needed for names in one or two squares;
+    /// `DeduplicatedRoads::resolve` uses the lines for the names in three or more.
+    pub fn insert_street_line(&mut self, street_name: &str, points: &[(f32, f32)]) {
+        if points.len() >= 2 {
+            self.lines.push(StreetLine { street_name: StreetName(street_name.to_string()), points: points.to_vec() });
+        }
+    }
+
+    /// The street lines in the grid that were added previously
+    pub fn street_lines(&self) -> &[StreetLine] {
+        &self.lines
+    }
+
+    /// The squares a polyline (millimeters from the top left of the page) passes, as
+    /// `(column, row)`, counted from 0: those with at least `min_mm` of the line in them; a
+    /// line with less in every square: the square most of it lies in. The part of the line
+    /// beyond the page does not count.
+    pub fn squares_passed(&self, points: &[(f32, f32)], min_mm: f32) -> Vec<(usize, usize)> {
+        let (columns, rows) = self.size();
+        let (cell_w, cell_h) = (self.config.cell_width.0, self.config.cell_height.0);
+        let (w, h) = (self.bbox.width.0, self.bbox.height.0);
+        let mut mm: ::std::collections::BTreeMap<(usize, usize), f32> = ::std::collections::BTreeMap::new();
+        for pair in points.windows(2) {
+            let (a, b) = (pair[0], pair[1]);
+            let len = (b.0 - a.0).hypot(b.1 - a.1);
+            if !len.is_finite() || len <= 0.0 {
+                continue;
+            }
+            // a sample every millimeter or less, each counted for its length
+            let steps = len.ceil().max(1.0) as usize;
+            let step = len / steps as f32;
+            for k in 0..steps {
+                let t = (k as f32 + 0.5) / steps as f32;
+                let (x, y) = (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+                if x >= 0.0 && y >= 0.0 && x < w && y < h {
+                    let cell = (((x / cell_w) as usize).min(columns - 1), ((y / cell_h) as usize).min(rows - 1));
+                    *mm.entry(cell).or_insert(0.0) += step;
+                }
+            }
+        }
+        let mut squares: Vec<(usize, usize)> = mm.iter().filter(|&(_, v)| *v >= min_mm).map(|(c, _)| *c).collect();
+        if squares.is_empty() {
+            let mut best: Option<((usize, usize), f32)> = None;
+            for (c, v) in mm.iter() {
+                if best.map(|b| *v > b.1).unwrap_or(true) {
+                    best = Some((*c, *v));
+                }
+            }
+            squares.extend(best.map(|b| b.0));
+        }
+        squares
     }
 }
 
@@ -230,6 +319,28 @@ pub fn number_to_alphabet_value(num: usize) -> String {
     // Cast the slice to a string, since we know that we only have ASCII
     // characters in the range from A to Z, there won't be any UTF-8 problems
     unsafe { ::std::str::from_utf8_unchecked(slice) }.to_string()
+}
+
+/// The index of a column's letters, the inverse of `number_to_alphabet_value`:
+///
+/// ```no_run,ignore
+/// "A"  -> Some(0)
+/// "Z"  -> Some(25)
+/// "AA" -> Some(26)
+/// "a"  -> None
+/// ```
+pub fn alphabet_value_to_number(letters: &str) -> Option<usize> {
+    if letters.is_empty() || !letters.bytes().all(|b| b >= b'A' && b <= b'Z') {
+        return None;
+    }
+    let mut value: usize = 0;
+    for b in letters.bytes() {
+        value = match value.checked_mul(26).and_then(|v| v.checked_add((b - b'A') as usize + 1)) {
+            Some(v) => v,
+            None => return None,
+        };
+    }
+    Some(value - 1)
 }
 
 // Transform from 0 to A, 1 to B, etc.
